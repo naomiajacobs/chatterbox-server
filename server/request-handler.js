@@ -16,7 +16,7 @@ var storage = {
   classes: {
     messages: []
   }
-}
+};
 
 /*
   they do a get request for /classes/roomthatdoesntexistyet: 404
@@ -40,10 +40,7 @@ var requestHandler = function(request, response) {
   // debugging help, but you should always be careful about leaving stray
   // console.logs in your code.
 
-  var requestType = request.method;
-
   console.log("Serving request type " + request.method + " for url " + request.url);
-  console.log(request.read());
 
   var urlTokens = request.url.split('/');
   var directory = urlTokens[1];
@@ -51,35 +48,31 @@ var requestHandler = function(request, response) {
 
   // The outgoing status.
   var statusCode;
-
   if (!storage[directory]) {
     statusCode = 404;
   } else {
-    statusCode = (request.method === 'GET') ? 200 : (request.method === 'POST') ? 201 : 404;
+    /*if (request.method === 'GET') { statusCode = 200; }
+    else if (request.method === 'POST') { statusCode = 201; }
+    else { statusCode = 404; }*/
+    statusCode = (request.method === 'GET') ? 200 : ((request.method === 'POST') ? 201 : 404);
   }
 
-  var createMessage = function() {};
+
   // we should totally make a helper fn that turns a request into a message object
   // push attributes to messages
 
   if (request.method === 'POST') {
     storage.classes[room] = (storage.classes[room] || []);
     var roomMsgs = storage.classes[room];
-    roomMsgs.push(createMessage());
+    var body = '';
+    request.on('data', function(data) {
+      body += data;
+    });
+    request.on('end', function() {
+      var post = JSON.parse(body);
+      roomMsgs.push(createMessage(post));
+    });
   }
-    // push
-
-  //if post
-    //check where they want message to go
-    //if just to messages
-      //add message to messages
-    //else
-      //if room exists
-        //add to messages and add referent to that message to its room
-      //else if room doesn't exist
-        //create room
-        //add message to messages
-        //add referent to its room
 
   // See the note below about CORS headers.
   var headers = defaultCorsHeaders;
@@ -115,6 +108,9 @@ var requestHandler = function(request, response) {
   response.end(result);
 };
 
+function createMessage(chunk) {
+  console.log(chunk);
+};
 
 // These headers will allow Cross-Origin Resource Sharing (CORS).
 // This code allows this server to talk to websites that
