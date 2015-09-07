@@ -12,6 +12,18 @@ this file and include it in basic-server.js so that it actually works.
 
 **************************************************************/
 
+var storage = {
+  classes: {
+    messages: []
+  }
+}
+
+/*
+  they do a get request for /classes/roomthatdoesntexistyet: 404
+  they do a get request for room that does exist: 200
+  they do a send request for room that doesnt exist: 200
+*/
+
 var requestHandler = function(request, response) {
   // Request and Response come from node's http module.
   //
@@ -27,10 +39,47 @@ var requestHandler = function(request, response) {
   // Adding more logging to your server can be an easy way to get passive
   // debugging help, but you should always be careful about leaving stray
   // console.logs in your code.
+
+  var requestType = request.method;
+
   console.log("Serving request type " + request.method + " for url " + request.url);
+  console.log(request.read());
+
+  var urlTokens = request.url.split('/');
+  var directory = urlTokens[1];
+  var room = urlTokens[2];
 
   // The outgoing status.
-  var statusCode = 200;
+  var statusCode;
+
+  if (!storage[directory]) {
+    statusCode = 404;
+  } else {
+    statusCode = (request.method === 'GET') ? 200 : (request.method === 'POST') ? 201 : 404;
+  }
+
+  var createMessage = function() {};
+  // we should totally make a helper fn that turns a request into a message object
+  // push attributes to messages
+
+  if (request.method === 'POST') {
+    storage.classes[room] = (storage.classes[room] || []);
+    var roomMsgs = storage.classes[room];
+    roomMsgs.push(createMessage());
+  }
+    // push
+
+  //if post
+    //check where they want message to go
+    //if just to messages
+      //add message to messages
+    //else
+      //if room exists
+        //add to messages and add referent to that message to its room
+      //else if room doesn't exist
+        //create room
+        //add message to messages
+        //add referent to its room
 
   // See the note below about CORS headers.
   var headers = defaultCorsHeaders;
@@ -39,11 +88,21 @@ var requestHandler = function(request, response) {
   //
   // You will need to change this if you are sending something
   // other than plain text, like JSON or HTML.
-  headers['Content-Type'] = "text/plain";
+  headers['Content-Type'] = "application/json";
 
   // .writeHead() writes to the request line and headers of the response,
   // which includes the status and all headers.
   response.writeHead(statusCode, headers);
+
+  // We are going to take our storage element, and turn it into a correct object to send back to the client
+  var room = 'all';
+  var newObj = {
+    // results: storage.messages
+    // This is where we can handle logic such as only displaying some messages
+    results: storage.classes.messages
+  }
+  var result = JSON.stringify(newObj);
+
 
   // Make sure to always call response.end() - Node may not send
   // anything back to the client until you do. The string you pass to
@@ -52,8 +111,10 @@ var requestHandler = function(request, response) {
   //
   // Calling .end "flushes" the response's internal buffer, forcing
   // node to actually send all the data over to the client.
-  response.end("Hello, World!");
+
+  response.end(result);
 };
+
 
 // These headers will allow Cross-Origin Resource Sharing (CORS).
 // This code allows this server to talk to websites that
@@ -70,4 +131,6 @@ var defaultCorsHeaders = {
   "access-control-allow-headers": "content-type, accept",
   "access-control-max-age": 10 // Seconds.
 };
+
+exports.requestHandler = requestHandler;
 
