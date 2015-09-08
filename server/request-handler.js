@@ -1,52 +1,28 @@
-/*************************************************************
-
-You should implement your request handler function in this file.
-
-requestHandler is already getting passed to http.createServer()
-in basic-server.js, but it won't work as is.
-
-You'll have to figure out a way to export this function from
-this file and include it in basic-server.js so that it actually works.
-
-*Hint* Check out the node module documentation at http://nodejs.org/api/modules.html.
-
-**************************************************************/
-
 var storage = {
   classes: {
     messages: []
   }
 };
 
-/*
-  they do a get request for /classes/roomthatdoesntexistyet: 404
-  they do a get request for room that does exist: 200
-  they do a send request for room that doesnt exist: 200
-*/
-
 var requestHandler = function(request, response) {
-  // Request and Response come from node's http module.
-  //
-  // They include information about both the incoming request, such as
-  // headers and URL, and about the outgoing response, such as its status
-  // and content.
-  //
-  // Documentation for both request and response can be found in the HTTP section at
-  // http://nodejs.org/documentation/api/
-
-  // Do some basic logging.
-  //
-  // Adding more logging to your server can be an easy way to get passive
-  // debugging help, but you should always be careful about leaving stray
-  // console.logs in your code.
 
   console.log("Serving request type " + request.method + " for url " + request.url);
 
+
+  // The outgoing status.
+
+  var hasParam = !! (request.url.indexOf('?')+1);
+  if (hasParam) {
+    var displayParams = request.url.substr(request.url.indexOf('?')+1);
+    request.url = request.url.substr(0, request.url.indexOf('?'));
+    // what i wanted to do was put this way later so we could just go sortMsgs(param, setting)
+  }
   var urlTokens = request.url.split('/');
   var directory = urlTokens[1];
   var room = urlTokens[2] || 'messages';
 
-  // The outgoing status.
+  // we should totally make a helper fn that turns a request into a message object
+  // push attributes to messages
   var statusCode;
   if (request.method === 'OPTIONS') { statusCode = 200; }
   else if (request.method === 'POST') { statusCode = 201; }
@@ -58,17 +34,8 @@ var requestHandler = function(request, response) {
       statusCode = 200;
     }
   }
-  /*if (!storage[directory]) {
-    statusCode = 404;
-  } else {
-    if (request.method === 'GET') { statusCode = 200; }
-    else if (request.method === 'POST') { statusCode = 201; }
-    else if (request.method === 'OPTIONS') { statusCode = 200; }
-    else { statusCode = 404; }
-  }*/
-
-  // we should totally make a helper fn that turns a request into a message object
-  // push attributes to messages
+  // DEBUGGIN
+  console.log(statusCode);
 
   if (request.method === 'POST') {
     storage.classes[room] = (storage.classes[room] || []);
@@ -79,6 +46,7 @@ var requestHandler = function(request, response) {
     });
     request.on('end', function() {
       var post = JSON.parse(body);
+      console.log(post);
       roomMsgs.push(createMessage(post));
     });
   }
@@ -105,7 +73,12 @@ var requestHandler = function(request, response) {
     // results: storage.messages
     // This is where we can handle logic such as only displaying some messages
     //results: storage.classes.messages
-    results: storage.classes[room] || []
+    results: storage.classes[room] || [],
+  }
+  if (hasParam) {
+    var param = displayParams.substr(0, displayParams.indexOf('='));
+    var setting = displayParams.substr(displayParams.indexOf('=') + 1);
+    newObj.results = sortResults(newObj.results, param, setting);
   }
   var result = JSON.stringify(newObj);
 
@@ -121,7 +94,21 @@ var requestHandler = function(request, response) {
   response.end(result);
 };
 
+function sortResults(array, dummyparam, field) {
+  var operator = 1;
+  if (field.charAt(0) === '-') {
+    field = field.substr(1);
+    operator = -1;
+  }
+  return array.sort(function(a,b) {
+    a = a[field]*operator;
+    b = b[field]*operator;
+    return a - b;
+  });
+}
+
 function createMessage(data) {
+  data.createdAt = Date.now();
   return data;
 };
 
@@ -137,7 +124,7 @@ function createMessage(data) {
 var defaultCorsHeaders = {
   "access-control-allow-origin": "*",
   "access-control-allow-methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "access-control-allow-headers": "content-type, accept",
+  "access-control-allow-headers": "content-type, accept, X-Parse-Application-Id, X-Parse-REST-API-Key",
   "access-control-max-age": 10 // Seconds.
 };
 
