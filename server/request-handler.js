@@ -48,15 +48,24 @@ var requestHandler = function(request, response) {
 
   // The outgoing status.
   var statusCode;
-  if (!storage[directory]) {
+  if (request.method === 'OPTIONS') { statusCode = 200; }
+  else if (request.method === 'POST') { statusCode = 201; }
+  else if (request.method === 'GET') {
+    if (!storage[directory]) {
+      statusCode = 404;
+    }
+    else {
+      statusCode = 200;
+    }
+  }
+  /*if (!storage[directory]) {
     statusCode = 404;
   } else {
-    /*if (request.method === 'GET') { statusCode = 200; }
+    if (request.method === 'GET') { statusCode = 200; }
     else if (request.method === 'POST') { statusCode = 201; }
-    else { statusCode = 404; }*/
-    statusCode = (request.method === 'GET') ? 200 : ((request.method === 'POST') ? 201 : 404);
-  }
-
+    else if (request.method === 'OPTIONS') { statusCode = 200; }
+    else { statusCode = 404; }
+  }*/
 
   // we should totally make a helper fn that turns a request into a message object
   // push attributes to messages
@@ -73,6 +82,10 @@ var requestHandler = function(request, response) {
       roomMsgs.push(createMessage(post));
     });
   }
+
+  // if (request.method === 'OPTIONS') {
+
+  // }
 
   // See the note below about CORS headers.
   var headers = defaultCorsHeaders;
