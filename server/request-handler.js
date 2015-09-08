@@ -44,7 +44,7 @@ var requestHandler = function(request, response) {
 
   var urlTokens = request.url.split('/');
   var directory = urlTokens[1];
-  var room = urlTokens[2];
+  var room = urlTokens[2] || 'messages';
 
   // The outgoing status.
   var statusCode;
@@ -88,11 +88,11 @@ var requestHandler = function(request, response) {
   response.writeHead(statusCode, headers);
 
   // We are going to take our storage element, and turn it into a correct object to send back to the client
-  var room = 'all';
   var newObj = {
     // results: storage.messages
     // This is where we can handle logic such as only displaying some messages
-    results: storage.classes.messages
+    //results: storage.classes.messages
+    results: storage.classes[room] || []
   }
   var result = JSON.stringify(newObj);
 
@@ -108,8 +108,8 @@ var requestHandler = function(request, response) {
   response.end(result);
 };
 
-function createMessage(chunk) {
-  console.log(chunk);
+function createMessage(data) {
+  return data;
 };
 
 // These headers will allow Cross-Origin Resource Sharing (CORS).
