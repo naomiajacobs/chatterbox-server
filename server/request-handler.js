@@ -1,4 +1,5 @@
-var dummyHTML = '<div>DUMMY PAGE</div>';
+// var dummyHTML = '<div>DUMMY PAGE</div>';
+var fs = require('fs');
 
 var storage = {
   classes: {
@@ -48,25 +49,46 @@ var requestHandler = function(request, response) {
   var result = JSON.stringify(newObj);
 
   //handle html requests
-  if (request.url === "/") {
-    console.log('empty');
-    headers['Content-Type'] = "text/html";
+  if (request.url === "/") { 
+    request.url = "/client/clientIndex.html";
+  }
+  request.url = '..'+request.url;
+  var fileType = request.url.substr(request.url.lastIndexOf('.')+1);
+  var acceptableFileTypes = ["html", "js", "json"];
+  var fileTypeHeaders = {
+    html: "text/html",
+    json: "application/json",
+    js: "application/javascript"
+  }
+  if (acceptableFileTypes.indexOf(fileType) !== -1) {
+    headers['Content-Type'] = fileTypeHeaders[fileType];
     response.writeHead(200, headers);
-    response.end(dummyHTML);
-
+    var indexHtml ="";
+    fs.readFile(request.url, function(err, data) {
+      if (err) { console.log(err); }
+      indexHtml+=data;
+      console.log('idx: '+  indexHtml);
+      response.end(indexHtml);
+    });
   //else return json request
   } else {
     response.end(result);
   }
 };
 
+/*function getFile(localURL) {
+  if (localURL === "/") { 
+    localURL = "../client/clientIndex.html"; 
+
+  }
+
+  return file;
+}*/
+
 function addPost(request, storage, room) {
   storage.classes[room] = (storage.classes[room] || []);
   var roomMsgs = storage.classes[room];
   var body = '';
-  request.on('data', function(data) {
-    body += data;
-  });
   request.on('end', function() {
     var post = JSON.parse(body);
     console.log(post);
