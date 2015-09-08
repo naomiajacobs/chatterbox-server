@@ -1,16 +1,13 @@
 // var dummyHTML = '<div>DUMMY PAGE</div>';
 var fs = require('fs');
 
-var storage = {
-  classes: {
-     messages: [{username:'test', text:'message'}]
-    // messages: []
-  }
-};
+var storageModule = require('./storageModule.js');
+var storage = storageModule.storage;
 
 var requestHandler = function(request, response) {
 
   console.log("Serving request type " + request.method + " for url " + request.url);
+  console.log(storage);
 
   //determine if sort parameters were passed in
   var hasParam = !! (request.url.indexOf('?')+1);
@@ -54,20 +51,21 @@ var requestHandler = function(request, response) {
   }
   request.url = '..'+request.url;
   var fileType = request.url.substr(request.url.lastIndexOf('.')+1);
-  var acceptableFileTypes = ["html", "js", "json"];
+  var acceptableFileTypes = ["html", "js", "json", "css"];
   var fileTypeHeaders = {
     html: "text/html",
     json: "application/json",
-    js: "application/javascript"
+    js: "application/javascript",
+    css: "text/css"
   }
   if (acceptableFileTypes.indexOf(fileType) !== -1) {
     headers['Content-Type'] = fileTypeHeaders[fileType];
     response.writeHead(200, headers);
     var indexHtml ="";
     fs.readFile(request.url, function(err, data) {
-      if (err) { console.log(err); }
+      if (err) { console.log('err: ', err); }
       indexHtml+=data;
-      console.log('idx: '+  indexHtml);
+      //console.log('idx: '+  indexHtml);
       response.end(indexHtml);
     });
   //else return json request
@@ -86,13 +84,14 @@ var requestHandler = function(request, response) {
 }*/
 
 function addPost(request, storage, room) {
-  storage.classes[room] = (storage.classes[room] || []);
-  var roomMsgs = storage.classes[room];
   var body = '';
+  request.on('data', function(data) {
+    body+=data;
+  });
   request.on('end', function() {
     var post = JSON.parse(body);
-    console.log(post);
-    roomMsgs.push(createMessage(post));
+    console.log('postlog', post);
+    storageModule.addMessage(post, room);
   });
 }
 
@@ -124,10 +123,6 @@ function sortResults(array, dummyparam, field) {
   });
 };
 
-function createMessage(data) {
-  data.createdAt = Date.now();
-  return data;
-};
 
 // These headers will allow Cross-Origin Resource Sharing (CORS).
 // This code allows this server to talk to websites that
