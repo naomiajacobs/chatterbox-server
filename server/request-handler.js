@@ -1,6 +1,9 @@
+var dummyHTML = '<div>DUMMY PAGE</div>';
+
 var storage = {
   classes: {
-    messages: []
+     messages: [{username:'test', text:'message'}]
+    // messages: []
   }
 };
 
@@ -8,71 +11,33 @@ var requestHandler = function(request, response) {
 
   console.log("Serving request type " + request.method + " for url " + request.url);
 
-
-  // The outgoing status.
-
+  //determine if sort parameters were passed in
   var hasParam = !! (request.url.indexOf('?')+1);
   if (hasParam) {
     var displayParams = request.url.substr(request.url.indexOf('?')+1);
     request.url = request.url.substr(0, request.url.indexOf('?'));
-    // what i wanted to do was put this way later so we could just go sortMsgs(param, setting)
   }
+
+  //tokenize url path to find data
   var urlTokens = request.url.split('/');
   var directory = urlTokens[1];
   var room = urlTokens[2] || 'messages';
 
-  // we should totally make a helper fn that turns a request into a message object
-  // push attributes to messages
-  var statusCode;
-  if (request.method === 'OPTIONS') { statusCode = 200; }
-  else if (request.method === 'POST') { statusCode = 201; }
-  else if (request.method === 'GET') {
-    if (!storage[directory]) {
-      statusCode = 404;
-    }
-    else {
-      statusCode = 200;
-    }
-  }
-  // DEBUGGIN
-  console.log(statusCode);
+  //find appropriate status code
+  var statusCode = findStatusCode(request.method, storage, directory);
 
+  //add post to storage
   if (request.method === 'POST') {
-    storage.classes[room] = (storage.classes[room] || []);
-    var roomMsgs = storage.classes[room];
-    var body = '';
-    request.on('data', function(data) {
-      body += data;
-    });
-    request.on('end', function() {
-      var post = JSON.parse(body);
-      console.log(post);
-      roomMsgs.push(createMessage(post));
-    });
+    addPost(request, storage, room);
   }
 
-  // if (request.method === 'OPTIONS') {
-
-  // }
-
-  // See the note below about CORS headers.
+  //add headers and write head
   var headers = defaultCorsHeaders;
-
-  // Tell the client we are sending them plain text.
-  //
-  // You will need to change this if you are sending something
-  // other than plain text, like JSON or HTML.
   headers['Content-Type'] = "application/json";
-
-  // .writeHead() writes to the request line and headers of the response,
-  // which includes the status and all headers.
   response.writeHead(statusCode, headers);
 
-  // We are going to take our storage element, and turn it into a correct object to send back to the client
+  //build object to return; sort properly if necessary
   var newObj = {
-    // results: storage.messages
-    // This is where we can handle logic such as only displaying some messages
-    //results: storage.classes.messages
     results: storage.classes[room] || [],
   }
   if (hasParam) {
@@ -82,16 +47,46 @@ var requestHandler = function(request, response) {
   }
   var result = JSON.stringify(newObj);
 
+  //handle html requests
+  if (request.url === "/") {
+    console.log('empty');
+    headers['Content-Type'] = "text/html";
+    response.writeHead(200, headers);
+    response.end(dummyHTML);
 
-  // Make sure to always call response.end() - Node may not send
-  // anything back to the client until you do. The string you pass to
-  // response.end() will be the body of the response - i.e. what shows
-  // up in the browser.
-  //
-  // Calling .end "flushes" the response's internal buffer, forcing
-  // node to actually send all the data over to the client.
+  //else return json request
+  } else {
+    response.end(result);
+  }
+};
 
-  response.end(result);
+function addPost(request, storage, room) {
+  storage.classes[room] = (storage.classes[room] || []);
+  var roomMsgs = storage.classes[room];
+  var body = '';
+  request.on('data', function(data) {
+    body += data;
+  });
+  request.on('end', function() {
+    var post = JSON.parse(body);
+    console.log(post);
+    roomMsgs.push(createMessage(post));
+  });
+}
+
+function findStatusCode(method, storage, directory) {
+  var statusCode;
+  if (method === 'OPTIONS') { statusCode = 200; }
+  else if (method === 'POST') { statusCode = 201; }
+  else if (method === 'GET') {
+    if (!storage[directory]) {
+      statusCode = 404;
+    }
+    else {
+      statusCode = 200;
+    }
+  }
+  return statusCode;
 };
 
 function sortResults(array, dummyparam, field) {
@@ -105,7 +100,7 @@ function sortResults(array, dummyparam, field) {
     b = b[field]*operator;
     return a - b;
   });
-}
+};
 
 function createMessage(data) {
   data.createdAt = Date.now();
